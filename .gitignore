@@ -48,3 +48,6 @@ borrar/*
 */ExecMean.txt
 
 !Dockerfile
+
+# Ignore our datasets for testing
+Examples_admetal
