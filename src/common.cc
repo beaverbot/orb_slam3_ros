@@ -16,6 +16,7 @@ ros::Publisher pose_pub, odom_pub, kf_markers_pub;
 ros::Publisher tracked_mappoints_pub, all_mappoints_pub;
 ros::Publisher tracked_keypoints_pub;
 image_transport::Publisher tracking_img_pub;
+ros::Publisher lost_pub;
 
 //////////////////////////////////////////////////
 // Main functions
@@ -80,6 +81,9 @@ void setup_publishers(ros::NodeHandle &node_handler, image_transport::ImageTrans
     {
         odom_pub = node_handler.advertise<nav_msgs::Odometry>(node_name + "/body_odom", 1);
     }
+
+    // Setup publisher to stop teleoperation if tracking is lost
+    lost_pub = node_handler.advertise<std_msgs::Bool>(node_name + "/is_lost", 1);
 }
 
 void publish_topics(ros::Time msg_time, Eigen::Vector3f Wbb)
@@ -100,6 +104,7 @@ void publish_topics(ros::Time msg_time, Eigen::Vector3f Wbb)
     publish_tracked_points(pSLAM->GetTrackedMapPoints(), msg_time);
     publish_all_points(pSLAM->GetAllMapPoints(), msg_time);
     publish_kf_markers(pSLAM->GetAllKeyframePoses(), msg_time);
+    publish_lost_state();
 
     // IMU-specific topics
     if (sensor_type == ORB_SLAM3::System::IMU_MONOCULAR || sensor_type == ORB_SLAM3::System::IMU_STEREO || sensor_type == ORB_SLAM3::System::IMU_RGBD)
@@ -115,6 +120,14 @@ void publish_topics(ros::Time msg_time, Eigen::Vector3f Wbb)
         publish_tf_transform(Twb, world_frame_id, imu_frame_id, msg_time);
         publish_body_odom(Twb, Vwb, Wwb, msg_time);
     }
+}
+
+void publish_lost_state()
+{
+    // Publish a notification if tracking is lost. Helps stop arm teleoperation on track loss to prevent erroneous movements
+    std_msgs::Bool lostMsg;
+    lostMsg.data = pSLAM->isLost();
+    lost_pub.publish(lostMsg);
 }
 
 void publish_body_odom(Sophus::SE3f Twb_SE3f, Eigen::Vector3f Vwb_E3f, Eigen::Vector3f ang_vel_body, ros::Time msg_time)

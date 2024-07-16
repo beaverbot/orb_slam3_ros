@@ -230,11 +230,13 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 
     // Fix verbosity
     Verbose::SetTh(Verbose::VERBOSITY_QUIET);
+    // Verbose::SetTh(Verbose::VERBOSITY_DEBUG);
 
 }
 
 Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp, const vector<IMU::Point>& vImuMeas, string filename)
 {
+    Verbose::PrintMess("\t1. Image Received", Verbose::VERBOSITY_DEBUG);
     if(mSensor!=STEREO && mSensor!=IMU_STEREO)
     {
         cerr << "ERROR: you called TrackStereo but input sensor was not set to Stereo nor Stereo-Inertial." << endl;
@@ -242,7 +244,9 @@ Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, 
     }
 
     cv::Mat imLeftToFeed, imRightToFeed;
+    Verbose::PrintMess("\t2. Checking Image...", Verbose::VERBOSITY_DEBUG);
     if(settings_ && settings_->needToRectify()){
+        Verbose::PrintMess("\t2.1 Rectifying Image", Verbose::VERBOSITY_DEBUG);
         cv::Mat M1l = settings_->M1l();
         cv::Mat M2l = settings_->M2l();
         cv::Mat M1r = settings_->M1r();
@@ -252,19 +256,23 @@ Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, 
         cv::remap(imRight, imRightToFeed, M1r, M2r, cv::INTER_LINEAR);
     }
     else if(settings_ && settings_->needToResize()){
+        Verbose::PrintMess("\t2.2 Resizing Image", Verbose::VERBOSITY_DEBUG);
         cv::resize(imLeft,imLeftToFeed,settings_->newImSize());
         cv::resize(imRight,imRightToFeed,settings_->newImSize());
     }
     else{
+        Verbose::PrintMess("\t2.3 Copying Image", Verbose::VERBOSITY_DEBUG);
         imLeftToFeed = imLeft.clone();
         imRightToFeed = imRight.clone();
     }
 
     // Check mode change
     {
+     Verbose::PrintMess("\t3. Check Mode Change", Verbose::VERBOSITY_DEBUG);
         unique_lock<mutex> lock(mMutexMode);
         if(mbActivateLocalizationMode)
         {
+            Verbose::PrintMess("\t3.1 Stopping mapping, switching to localization...", Verbose::VERBOSITY_DEBUG);
             mpLocalMapper->RequestStop();
 
             // Wait until Local Mapping has effectively stopped
@@ -278,6 +286,7 @@ Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, 
         }
         if(mbDeactivateLocalizationMode)
         {
+            Verbose::PrintMess("\t3.1 Stopping localization, switching to mapping...", Verbose::VERBOSITY_DEBUG);
             mpTracker->InformOnlyTracking(false);
             mpLocalMapper->Release();
             mbDeactivateLocalizationMode = false;
@@ -286,15 +295,18 @@ Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, 
 
     // Check reset
     {
+        Verbose::PrintMess("\t4. Checking Reset", Verbose::VERBOSITY_DEBUG);
         unique_lock<mutex> lock(mMutexReset);
         if(mbReset)
         {
+            Verbose::PrintMess("\t4.1 Resetting...", Verbose::VERBOSITY_DEBUG);
             mpTracker->Reset();
             mbReset = false;
             mbResetActiveMap = false;
         }
         else if(mbResetActiveMap)
         {
+            Verbose::PrintMess("\t4.2 Resetting active map...", Verbose::VERBOSITY_DEBUG);
             mpTracker->ResetActiveMap();
             mbResetActiveMap = false;
         }
@@ -305,10 +317,12 @@ Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, 
             mpTracker->GrabImuData(vImuMeas[i_imu]);
 
     // std::cout << "start GrabImageStereo" << std::endl;
+    Verbose::PrintMess("\t5. Grabbing Stereo Image", Verbose::VERBOSITY_DEBUG);
     Sophus::SE3f Tcw = mpTracker->GrabImageStereo(imLeftToFeed,imRightToFeed,timestamp,filename);
 
     // std::cout << "out grabber" << std::endl;
 
+    Verbose::PrintMess("\t6. Changing State", Verbose::VERBOSITY_DEBUG);
     unique_lock<mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
@@ -1373,11 +1387,12 @@ double System::GetTimeFromIMUInit()
 
 bool System::isLost()
 {
-    if (!mpAtlas->isImuInitialized())
+    if (!mpAtlas->isImuInitialized() && (mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO || mSensor == IMU_RGBD))
         return false;
     else
     {
-        if ((mpTracker->mState==Tracking::LOST)) //||(mpTracker->mState==Tracking::RECENTLY_LOST))
+        if ((mpTracker->mState==Tracking::LOST) || (mpTracker->mState==Tracking::RECENTLY_LOST))
+            // Recently lost is still a type of lost for our purposes
             return true;
         else
             return false;

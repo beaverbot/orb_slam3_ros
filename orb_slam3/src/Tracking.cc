@@ -1495,6 +1495,7 @@ Sophus::SE3f Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat 
     cv::Mat imGrayRight = imRectRight;
     mImRight = imRectRight;
 
+    Verbose::PrintMess("GIS: Converting Image to Grayscale ", Verbose::VERBOSITY_DEBUG);
     if(mImGray.channels()==3)
     {
         //cout << "Image with 3 channels" << endl;
@@ -1526,6 +1527,7 @@ Sophus::SE3f Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat 
 
     //cout << "Incoming frame creation" << endl;
 
+    Verbose::PrintMess("GIS: Process Frame ", Verbose::VERBOSITY_DEBUG);
     if (mSensor == System::STEREO && !mpCamera2)
         mCurrentFrame = Frame(mImGray,imGrayRight,timestamp,mpORBextractorLeft,mpORBextractorRight,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth,mpCamera);
     else if(mSensor == System::STEREO && mpCamera2)
@@ -1541,14 +1543,16 @@ Sophus::SE3f Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat 
     mCurrentFrame.mnDataset = mnNumDataset;
 
 #ifdef REGISTER_TIMES
+    Verbose::PrintMess("GIS: Register Times ", Verbose::VERBOSITY_DEBUG);
     vdORBExtract_ms.push_back(mCurrentFrame.mTimeORB_Ext);
     vdStereoMatch_ms.push_back(mCurrentFrame.mTimeStereoMatch);
 #endif
 
-    //cout << "Tracking start" << endl;
+    Verbose::PrintMess("GIS: Tracking Start ", Verbose::VERBOSITY_DEBUG);
     Track();
-    //cout << "Tracking end" << endl;
+    Verbose::PrintMess("GIS: Tracking Start ", Verbose::VERBOSITY_DEBUG);
 
+    Verbose::PrintMess("GIS: Returning Pose ", Verbose::VERBOSITY_DEBUG);
     return mCurrentFrame.GetPose();
 }
 
@@ -1919,14 +1923,17 @@ void Tracking::Track()
     mbCreatedMap = false;
 
     // Get Map Mutex -> Map cannot be changed
+    Verbose::PrintMess("TRACK: Getting Mutex", Verbose::VERBOSITY_DEBUG);
     unique_lock<mutex> lock(pCurrentMap->mMutexMapUpdate);
 
     mbMapUpdated = false;
 
+    Verbose::PrintMess("TRACK: Getting Map Change", Verbose::VERBOSITY_DEBUG);
     int nCurMapChangeIndex = pCurrentMap->GetMapChangeIndex();
     int nMapChangeIndex = pCurrentMap->GetLastMapChange();
     if(nCurMapChangeIndex>nMapChangeIndex)
     {
+    Verbose::PrintMess("TRACK: Setting Map Change", Verbose::VERBOSITY_DEBUG);
         pCurrentMap->SetLastMapChange(nCurMapChangeIndex);
         mbMapUpdated = true;
     }
@@ -1936,10 +1943,12 @@ void Tracking::Track()
     {
         if(mSensor==System::STEREO || mSensor==System::RGBD || mSensor==System::IMU_STEREO || mSensor==System::IMU_RGBD)
         {
+            Verbose::PrintMess("TRACK: Initializing Stereo", Verbose::VERBOSITY_DEBUG);
             StereoInitialization();
         }
         else
         {
+            Verbose::PrintMess("TRACK: Initializing Mono", Verbose::VERBOSITY_DEBUG);
             MonocularInitialization();
         }
 
@@ -1947,6 +1956,7 @@ void Tracking::Track()
 
         if(mState!=OK) // If rightly initialized, mState=OK
         {
+            Verbose::PrintMess("TRACK: Setting last frame to current frame", Verbose::VERBOSITY_DEBUG);
             mLastFrame = Frame(mCurrentFrame);
             return;
         }
@@ -1976,6 +1986,7 @@ void Tracking::Track()
             {
 
                 // Local Mapping might have changed some MapPoints tracked in last frame
+                Verbose::PrintMess("TRACK: CheckReplacedInLastFrame ", Verbose::VERBOSITY_DEBUG);
                 CheckReplacedInLastFrame();
 
                 if((!mbVelocity && !pCurrentMap->isImuInitialized()) || mCurrentFrame.mnId<mnLastRelocFrameId+2)
