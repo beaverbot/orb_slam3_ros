@@ -1,3 +1,15 @@
+# beaverbot orb_slam3_ros fork
+This fork implements some fixes, but also some new features designed to make orb_slam3_ros work as a teleoperation system for a robot arm.
+
+## Major fixes:
+- Fix error where an infinite loop is caused on loop closing by keyframes having their descendents as parents
+- Prevent crash where keyframe has Null parent
+
+## Major features:
+- Topic that publishes when tracking is lost and regained, to notify the teleoperation system to stop on track loss.
+- Takes a ROS param, `enable_loop_closing` to toggle the loop closing thread on and off. Loop closing adjusts the map, which can cause sudden jerks in the teleoperation system, so it is best enabled when building a map, but disabled when teleoperating.
+
+
 # ORB-SLAM3-ROS
 
 A ROS implementation of [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3) V1.0 that focuses on the ROS part.
