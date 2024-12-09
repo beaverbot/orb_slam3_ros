@@ -209,20 +209,25 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     if (enableLoopClosing) {
         cout << "Loop closing enabled. Set rosparam enable_loopclosing to disable." << endl;
         mptLoopClosing = new thread(&ORB_SLAM3::LoopClosing::Run, mpLoopCloser);
+
+        //Set pointers between threads for loop closing
+        mpTracker->SetLoopClosing(mpLoopCloser);
+        mpLocalMapper->SetLoopCloser(mpLoopCloser);
+
+        mpLoopCloser->SetTracker(mpTracker);
+        mpLoopCloser->SetLocalMapper(mpLocalMapper);
     }
     else {
         cout << "Loop closing disabled. Set rosparam enable_loopclosing to enable." << endl;
+
+        //Set pointers between threads to NULL to indicate no loop closing
+        mpTracker->SetLoopClosing(NULL);    // Note this will not work if 
+        mpLocalMapper->SetLoopCloser(NULL);
     }
 
-    //Set pointers between threads
+    //Set pointers between threads not involving loop closing
     mpTracker->SetLocalMapper(mpLocalMapper);
-    mpTracker->SetLoopClosing(mpLoopCloser);
-
     mpLocalMapper->SetTracker(mpTracker);
-    mpLocalMapper->SetLoopCloser(mpLoopCloser);
-
-    mpLoopCloser->SetTracker(mpTracker);
-    mpLoopCloser->SetLocalMapper(mpLocalMapper);
 
     //usleep(10*1000*1000);
 
