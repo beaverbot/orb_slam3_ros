@@ -172,6 +172,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 
 
     if (mSensor==IMU_STEREO || mSensor==IMU_MONOCULAR || mSensor==IMU_RGBD)
+        cout << endl << "--- Initializing Inertial SLAM. Move the camera back and forth during initialization. ---" << endl
+            << "--- Go slightly faster if you see 'not enough acceleration'. ---" << endl << endl;
         mpAtlas->SetInertialSensor();
 
     //Create Drawers. These are used by the Viewer

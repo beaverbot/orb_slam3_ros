@@ -224,6 +224,7 @@ void LocalMapping::Run()
                                     InitializeIMU(0.f, 0.f, true);
 
                                 cout << "end VIBA 2" << endl;
+                                cout << endl << "--- SLAM IMU Initialization Complete. You can stop moving the camera back and forth. ---" << endl << endl;
                             }
                         }
 
